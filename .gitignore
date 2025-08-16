@@ -1,0 +1,13 @@
+# macOS
+.DS_Store
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Virtual environments
+.venv/
+
+# Dati grezzi e output
+data/
+outputs/
