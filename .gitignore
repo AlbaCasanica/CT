@@ -11,3 +11,7 @@ __pycache__/
 # Dati grezzi e output
 data/
 outputs/
+
+# Archivi/legacy
+experiments/_old/
+outputs/_archive/
