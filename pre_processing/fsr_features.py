@@ -69,67 +69,62 @@ def fsr_columns(df: pd.DataFrame) -> List[str]:
 
 def default_grid_coords() -> Dict[str, Tuple[float, float]]:
     """
-    Create normalized (0..1) 2D coordinates for a 4x4 grid in row-major order.
+    Coordinate normalizzate (x,y) in [0,1] per la soletta Yeti 42/43,
+    coerenti con il layout fisico confermato:
 
-    If your physical mapping differs (e.g., row/column orientation), adjust accordingly in your pipeline.
+        r0: [13 11 12 14]  (tallone)
+        r1: [08 10 15 05]
+        r2: [07 09 16 04]
+        r3: [06 01 02 03]  (avampiede/dita)
 
-    Returns
-    -------
-    dict[str, tuple[float, float]]
-        Mapping from FSR channel name (e.g., 'Fsr.01') to (x, y) coordinates in [0, 1].
+    x = col/(3)  mediale(0) -> laterale(3)
+    y = row/(3)  posteriore(0) -> anteriore(3)
     """
+    # mappa (row, col) per ciascun canale Fsr.xx
+    rc_map = {
+        "Fsr.13": (0, 0), "Fsr.11": (0, 1), "Fsr.12": (0, 2), "Fsr.14": (0, 3),
+        "Fsr.08": (1, 0), "Fsr.10": (1, 1), "Fsr.15": (1, 2), "Fsr.05": (1, 3),
+        "Fsr.07": (2, 0), "Fsr.09": (2, 1), "Fsr.16": (2, 2), "Fsr.04": (2, 3),
+        "Fsr.06": (3, 0), "Fsr.01": (3, 1), "Fsr.02": (3, 2), "Fsr.03": (3, 3),
+    }
+
     coords: Dict[str, Tuple[float, float]] = {}
-    grid_size = 4
-    for i in range(1, 17):
-        idx = i - 1
-        x = (idx % grid_size) / (grid_size - 1)
-        y = (idx // grid_size) / (grid_size - 1)
-        coords[f"Fsr.{i:02d}"] = (x, y)
+    for ch, (r, c) in rc_map.items():
+        x = c / 3.0  # mediale->laterale
+        y = r / 3.0  # posteriore->anteriore
+        coords[ch] = (x, y)
     return coords
+
 
 
 def _region_masks(cols: List[str]) -> Tuple[List[int], List[int], List[int], List[int]]:
     """
-    Build region masks (indices) for heel/fore and medial/lateral in a robust way.
-
-    Steps
-    -----
-    1. Sort the 16 channel names by their numeric suffix (1..16).
-    2. Build a 4x4 row-major grid on this sorted order.
-    3. Return indices w.r.t. the ORIGINAL order provided by `cols`.
-
-    Assumptions
-    -----------
-    - Exactly 16 FSR channels are present in `cols`.
-
-    Returns
-    -------
-    tuple[list[int], list[int], list[int], list[int]]
-        heel_indices, fore_indices, medial_indices, lateral_indices (indices relative to `cols`).
-
-    Notes
-    -----
-    If your physical convention is inverted, swap heel <-> fore inside the function.
+    Indici (rispetto a `cols`) per regioni: heel, fore, medial, lateral
+    costruiti sulla base del layout fisico Yeti 42/43 (vedi default_grid_coords).
     """
-    n = len(cols)
-    assert n == 16, f"Expected 16 FSR channels, found {n} (cols={list(cols)})"
+    # stessa mappa (row,col) usata sopra
+    rc_map = {
+        "Fsr.13": (0, 0), "Fsr.11": (0, 1), "Fsr.12": (0, 2), "Fsr.14": (0, 3),
+        "Fsr.08": (1, 0), "Fsr.10": (1, 1), "Fsr.15": (1, 2), "Fsr.05": (1, 3),
+        "Fsr.07": (2, 0), "Fsr.09": (2, 1), "Fsr.16": (2, 2), "Fsr.04": (2, 3),
+        "Fsr.06": (3, 0), "Fsr.01": (3, 1), "Fsr.02": (3, 2), "Fsr.03": (3, 3),
+    }
 
-    def num(c: str) -> int:
-        m = re.search(r"(\d+)", c)
-        if not m:
-            raise ValueError(f"Cannot extract channel number from column name: {c}")
-        return int(m.group(1))
+    # costruisco lista (idx_in_cols, row, col) per i canali presenti
+    info: List[Tuple[int, int, int]] = []
+    for i, ch in enumerate(cols):
+        if ch not in rc_map:
+            raise KeyError(f"Column '{ch}' non trovata nel mapping fisico (atteso Fsr.01..Fsr.16).")
+        r, c = rc_map[ch]
+        info.append((i, r, c))
 
-    nums = np.array([num(c) for c in cols])
-    order = np.argsort(nums)  # indices into the original array that sort channels as 1..16
-
-    # grid rows: 0..3 (row-major), columns: 0..3
-    heel   = [int(order[k]) for k in range(16) if (k // 4) in (0, 1)]  # back two rows
-    fore   = [int(order[k]) for k in range(16) if (k // 4) in (2, 3)]  # front two rows
-    medial = [int(order[k]) for k in range(16) if (k % 4)  in (0, 1)]  # inner two columns
-    lateral= [int(order[k]) for k in range(16) if (k % 4)  in (2, 3)]  # outer two columns
-
+    # regioni (righe 0-1 = heel/posteriore; righe 2-3 = fore/anteriore)
+    heel    = [i for i, r, c in info if r in (0, 1)]
+    fore    = [i for i, r, c in info if r in (2, 3)]
+    medial  = [i for i, r, c in info if c in (0, 1)]
+    lateral = [i for i, r, c in info if c in (2, 3)]
     return heel, fore, medial, lateral
+
 
 
 # =============================
