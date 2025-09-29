@@ -454,3 +454,34 @@ def combine_left_right(rep_L: pd.DataFrame, rep_R: pd.DataFrame) -> pd.DataFrame
             out[f"{base}_absdiff"] = np.abs(d)
 
     return out
+
+def _smooth_series(x: pd.Series, win: int = 5) -> pd.Series:
+    """
+    Lightweight smoothing for segmentation (centered rolling mean).
+    """
+    win = max(1, int(win))
+    if win == 1 or len(x) < win:
+        return x
+    return x.rolling(window=win, center=True, min_periods=1).mean()
+
+def find_split_index_from_cop_or_load(per_sample: pd.DataFrame,
+                                      fsr_cols: Sequence[str] | None = None,
+                                      smooth_win: int = 5) -> int:
+    """
+    Decide a 2-phase split point:
+    1) Prefer CoP y of both feet: column named 'cop_y_both' if present,
+    2) Otherwise use total load (sum of fsr_cols).
+    Returns the integer row index (0..len-1) of the split (argmin).
+    """
+    if "cop_y_both" in per_sample.columns:
+        s = per_sample["cop_y_both"].astype(float)
+    else:
+        if fsr_cols is None or len(fsr_cols) == 0:
+            # fallback: try all numeric columns that look like FSRs
+            fsr_cols = [c for c in per_sample.columns
+                        if ("left_" in c or "right_" in c) and per_sample[c].dtype != "O"]
+        s = per_sample[fsr_cols].sum(axis=1)
+
+    s_sm = _smooth_series(s, win=smooth_win)
+    # argmin over the smoothed signal
+    return int(s_sm.idxmin())
