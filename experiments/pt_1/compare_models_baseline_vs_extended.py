@@ -42,7 +42,8 @@ from sklearn.svm import SVC
 # =========================
 # Config
 # =========================
-PATH_CSV = Path("outputs/features_fsr_train.csv")  # run from CT/experiments
+ROOT = Path(__file__).resolve().parents[2]
+PATH_CSV = ROOT / "outputs" / "features_fsr_train.csv"
 LABEL_COL = "label"
 REP_ID_COL = "rep_id"
 TEST_ID_COL = "test_id"
@@ -243,7 +244,7 @@ def main():
     print("\n=== RESULTS ===")
     print(res_df)
 
-    out_path = Path("outputs/model_compare_outputs.csv")
+    out_path = ROOT / "outputs" / "model_compare_outputs.csv"
     res_df.to_csv(out_path, index=False)
     print(f"\n[OK] Results saved to {out_path}")
 

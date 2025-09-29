@@ -35,7 +35,7 @@ from sklearn.metrics import accuracy_score, f1_score, classification_report, con
 # =========================
 # Paths and configuration
 # =========================
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 
 MODEL_PATH = ROOT / "outputs" / "models_test1-12" / "svm_rbf_BASE_NOGUARD_UNIFIED.joblib"

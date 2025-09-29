@@ -37,7 +37,7 @@ import numpy as np
 # =========================
 # Project root for local imports
 # =========================
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 sys.path.append(str(ROOT))
 
 from pre_processing.fsr_features import (  # noqa: E402
